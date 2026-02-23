@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SpeedDial — Stop Googling Phone Numbers Like a Baboon!</title>
+<meta name="description" content="Search, tap, call. Every business, verified number, your limitless phonebook."/>
+<meta property="og:title" content="SpeedDial — Your Limitless Phonebook"/>
+<meta property="og:description" content="Stop googling phone numbers like a baboon! Search, tap, call. Every business, verified number, zero nonsense."/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://elviswithclaws.github.io/phonetag"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="SpeedDial — Your Limitless Phonebook"/>
+<meta name="twitter:description" content="Stop googling phone numbers like a baboon! Search, tap, call."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --red: #E8453C;
+    --green: #25D366;
+    --black: #111B21;
+    --gray: #667781;
+    --light-bg: #f0f2f5;
+    --white: #ffffff;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: var(--white);
+    color: var(--black);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  a { text-decoration: none; color: inherit; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top:0; left:0; right:0; z-index:100;
+    padding: 0 40px;
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 9px;
+  }
+  .nav-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-name {
+    font-size: 17px; font-weight: 700; letter-spacing: -0.5px;
+    color: var(--black);
+  }
+  .nav-cta {
+    padding: 9px 24px;
+    background: var(--black);
+    color: var(--white);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 100px;
+    transition: all 0.25s ease;
+    letter-spacing: -0.2px;
+  }
+  .nav-cta:hover { background: #333; transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 48px 80px;
+    position: relative;
+    overflow: hidden;
+    background: var(--white);
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 100%;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,0,0,0.015) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-inner {
+    display: flex;
+    align-items: center;
+    gap: 80px;
+    max-width: 1140px;
+    width: 100%;
+    position: relative;
+  }
+  .hero-text {
+    flex: 1;
+    max-width: 560px;
+  }
+  .hero-text h1 {
+    font-size: clamp(40px, 5.2vw, 62px);
+    font-weight: 800;
+    letter-spacing: -2.5px;
+    line-height: 1.04;
+    margin-bottom: 28px;
+    color: var(--black);
+  }
+  .hero-text h1 .baboon {
+    color: var(--red);
+    font-style: normal;
+  }
+
+  /* ── VALUE PROPS ── */
+  .value-row {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .value-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .value-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--black);
+  }
+  .value-item .check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+  }
+  .value-item .check svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .hero-sub {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--gray);
+    margin-bottom: 40px;
+    max-width: 440px;
+  }
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 36px;
+    background: var(--black);
+    color: var(--white);
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 100px;
+    transition: all 0.25s ease;
+    letter-spacing: -0.2px;
+  }
+  .hero-cta:hover {
+    background: #222;
+    transform: translateY(-2px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+  }
+
+  /* ── PHONE MOCKUP ── */
+  .hero-phone {
+    flex: 0 0 340px;
+    display: flex;
+    justify-content: center;
+  }
+  .phone-frame {
+    width: 280px;
+    height: 580px;
+    border-radius: 44px;
+    background: #000;
+    padding: 12px;
+    box-shadow:
+      0 50px 100px rgba(0,0,0,0.12),
+      0 20px 40px rgba(0,0,0,0.08),
+      0 0 0 1px rgba(0,0,0,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 34px;
+    background: #f2f2f7;
+    overflow: hidden;
+    position: relative;
+  }
+  .phone-notch {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 28px;
+    background: #000;
+    border-radius: 0 0 18px 18px;
+    z-index: 2;
+  }
+  .phone-content {
+    padding: 38px 14px 12px;
+  }
+  .phone-header {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+  .phone-header-icon {
+    width: 22px; height: 22px; border-radius: 5px;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phone-header-text {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.6px;
+    color: #000;
+  }
+  .phone-search {
+    background: #e5e5ea;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #8e8e93;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .phone-pills {
+    display: flex; gap: 5px;
+    margin-bottom: 10px;
+    padding: 0 1px;
+  }
+  .phone-pill {
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .phone-pill.active {
+    background: #007aff;
+    color: #fff;
+  }
+  .phone-pill.inactive {
+    background: #fff;
+    color: #000;
+    box-shadow: 0 0.5px 2px rgba(0,0,0,0.08);
+  }
+  .phone-section-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #8e8e93;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 4px 2px 3px;
+    background: #f2f2f7;
+  }
+  .phone-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 2px;
+    border-bottom: 0.5px solid #e5e5ea;
+    background: #fff;
+  }
+  .phone-avatar {
+    width: 32px; height: 32px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 10px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .phone-row-info { flex: 1; min-width: 0; }
+  .phone-row-name { font-size: 12.5px; font-weight: 500; color: #000; line-height: 1.2; }
+  .phone-row-sub { font-size: 10px; color: #8e8e93; margin-top: 1px; line-height: 1.2; }
+  .phone-row-call {
+    width: 24px; height: 24px; border-radius: 12px;
+    background: rgba(37,211,102,0.12);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .section {
+    padding: 120px 48px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .section-label {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 16px;
+  }
+  .section h2 {
+    font-size: clamp(30px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.08;
+    margin-bottom: 64px;
+    color: var(--black);
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+  .step {
+    padding: 36px 32px;
+    border-radius: 24px;
+    background: var(--light-bg);
+    border: 1px solid rgba(0,0,0,0.04);
+    transition: transform 0.2s ease;
+  }
+  .step:hover {
+    transform: translateY(-4px);
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--black);
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+  .step h3 {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.5px;
+    margin-bottom: 10px;
+    color: var(--black);
+  }
+  .step p {
+    font-size: 15px; color: var(--gray); line-height: 1.55;
+  }
+
+  /* ── STATS STRIP ── */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+    padding: 80px 48px;
+    background: var(--light-bg);
+    border-top: 1px solid rgba(0,0,0,0.04);
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    color: var(--black);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-size: 14px;
+    color: var(--gray);
+    font-weight: 500;
+  }
+
+  /* ── CTA SECTION ── */
+  .cta-section {
+    padding: 120px 48px;
+    text-align: center;
+    background: var(--black);
+    color: var(--white);
+  }
+  .cta-section h2 {
+    font-size: clamp(28px, 4.5vw, 52px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.08;
+    max-width: 680px;
+    margin: 0 auto 20px;
+  }
+  .cta-section h2 .accent { color: var(--green); }
+  .cta-sub {
+    font-size: 17px;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 40px;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 40px;
+    background: var(--white);
+    color: var(--black);
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 100px;
+    transition: all 0.25s ease;
+    letter-spacing: -0.2px;
+  }
+  .cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 48px rgba(255,255,255,0.12);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 48px 48px;
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+    background: var(--black);
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .hero-inner {
+      flex-direction: column;
+      text-align: center;
+      gap: 56px;
+    }
+    .hero-text { max-width: 100%; }
+    .hero-text h1 { font-size: clamp(34px, 8vw, 48px); }
+    .hero-sub { margin-left: auto; margin-right: auto; }
+    .hero-cta { margin: 0 auto; }
+    .value-row { justify-content: center; }
+    .hero-phone { flex: none; }
+    .phone-frame { width: 240px; height: 500px; }
+    .steps { grid-template-columns: 1fr; gap: 20px; }
+    nav { padding: 0 20px; }
+    .hero { padding: 100px 24px 64px; }
+    .section { padding: 80px 24px; }
+    .stats { gap: 40px; flex-wrap: wrap; padding: 60px 24px; }
+    .cta-section { padding: 80px 24px; }
+  }
+
+  @media (max-width: 480px) {
+    .value-row { gap: 20px; flex-direction: column; align-items: center; }
+    .stats { gap: 32px; }
+    .stat-num { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+        <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+      </svg>
+    </div>
+    <span class="nav-name">SpeedDial</span>
+  </div>
+  <a href="https://elviswithclaws.github.io/phonetag" class="nav-cta">Open App</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <h1>Stop googling phone numbers like a <span class="baboon">baboon!</span></h1>
+
+      <div class="value-row">
+        <div class="value-group">
+          <div class="value-item">
+            <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+            Search
+          </div>
+          <div class="value-item">
+            <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+            Tap
+          </div>
+          <div class="value-item">
+            <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+            Call
+          </div>
+        </div>
+        <div class="value-group">
+          <div class="value-item">
+            <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+            Verified
+          </div>
+          <div class="value-item">
+            <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+            Instant
+          </div>
+          <div class="value-item">
+            <span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+            Limitless
+          </div>
+        </div>
+      </div>
+
+      <p class="hero-sub">Every business. Every number. Zero nonsense. The phonebook the internet forgot to build.</p>
+
+      <a href="https://elviswithclaws.github.io/phonetag" class="hero-cta">
+        Try SpeedDial — it's free
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
+    </div>
+
+    <div class="hero-phone">
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="phone-content">
+            <!-- Header -->
+            <div class="phone-header">
+              <div class="phone-header-icon">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="white">
+                  <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                </svg>
+              </div>
+              <span class="phone-header-text">SpeedDial</span>
+            </div>
+            <!-- Search bar -->
+            <div class="phone-search">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              Search businesses...
+            </div>
+            <!-- Filter pills -->
+            <div class="phone-pills">
+              <span class="phone-pill active">⚡ All</span>
+              <span class="phone-pill inactive">★ Ratings</span>
+              <span class="phone-pill inactive">📍 Nearby</span>
+              <span class="phone-pill inactive">🟢 Open</span>
+            </div>
+            <!-- Featured section label -->
+            <div class="phone-section-label">Featured</div>
+            <!-- Rows -->
+            <div class="phone-row">
+              <div class="phone-avatar" style="background:#1c1c1e">DA</div>
+              <div class="phone-row-info">
+                <div class="phone-row-name">Delta Air Lines</div>
+                <div class="phone-row-sub">Platinum Support Line</div>
+              </div>
+              <div class="phone-row-call">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#25D366"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              </div>
+            </div>
+            <div class="phone-row">
+              <div class="phone-avatar" style="background:#1c1c1e">AE</div>
+              <div class="phone-row-info">
+                <div class="phone-row-name">American Express</div>
+                <div class="phone-row-sub">Platinum Concierge</div>
+              </div>
+              <div class="phone-row-call">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#25D366"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              </div>
+            </div>
+            <div class="phone-row">
+              <div class="phone-avatar" style="background:#1c1c1e">FS</div>
+              <div class="phone-row-info">
+                <div class="phone-row-name">Four Seasons</div>
+                <div class="phone-row-sub">Global Reservations</div>
+              </div>
+              <div class="phone-row-call">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#25D366"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              </div>
+            </div>
+            <!-- Alpha section label -->
+            <div class="phone-section-label">A</div>
+            <div class="phone-row">
+              <div class="phone-avatar" style="background:#007aff">AA</div>
+              <div class="phone-row-info">
+                <div class="phone-row-name">American Airlines</div>
+                <div class="phone-row-sub">Reservations & Flight Info</div>
+              </div>
+              <div class="phone-row-call">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#25D366"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              </div>
+            </div>
+            <div class="phone-row" style="border:none">
+              <div class="phone-avatar" style="background:#ff3b30">AS</div>
+              <div class="phone-row-info">
+                <div class="phone-row-name">Apple Support</div>
+                <div class="phone-row-sub">Technical Support</div>
+              </div>
+              <div class="phone-row-call">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#25D366"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="section">
+  <div class="section-label">How it works</div>
+  <h2>Three taps. That's it.</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Search</h3>
+      <p>Type any business. Delta, Amex, the pizza place around the corner. We find the number.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Verified</h3>
+      <p>No SEO garbage. No blog posts. No Reddit threads from 2019. Just the actual, verified number.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Call</h3>
+      <p>Tap the green button. Your phone dials immediately. You just saved 5 minutes and 12 open tabs.</p>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-num">0</div>
+    <div class="stat-label">Ads to scroll past</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">0</div>
+    <div class="stat-label">Tabs to open</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">3s</div>
+    <div class="stat-label">Average time to call</div>
+  </div>
+</div>
+
+<!-- CTA SECTION -->
+<div class="cta-section">
+  <h2>Your phone has a dialer. It just needed <span class="accent">a brain.</span></h2>
+  <p class="cta-sub">No app download. No account. Works on any phone or computer.</p>
+  <a href="https://elviswithclaws.github.io/phonetag" class="cta-btn">
+    Try SpeedDial — it's free
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+  </a>
+</div>
+
+<footer>
+  SpeedDial &mdash; Built by David
+</footer>
+
+</body>
+</html>
