@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<title>PhoneTag</title>
+<title>SpeedDial</title>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -247,44 +247,58 @@ const CATEGORIES = [
 
 // ─── CURATED DIRECTORY ─────────────────────────────────────────────────
 const CURATED_DIRECTORY = [
-  { name: 'Delta Air Lines', phone: '+1-800-221-1212', category: 'airlines', verified: true, sponsored: true, tagline: 'Customer Service & Reservations', website: 'delta.com', hours: '24/7' },
+  // ── FEATURED / SPONSORED ──
+  { name: 'Delta Air Lines', phone: '+1-800-221-1212', category: 'airlines', verified: true, sponsored: true, tagline: 'Platinum Support Line', website: 'delta.com', hours: '24/7' },
+  { name: 'American Express', phone: '+1-800-528-4800', category: 'banks', verified: true, sponsored: true, tagline: 'Platinum Concierge', website: 'americanexpress.com', hours: '24/7' },
+  { name: 'Four Seasons Hotels', phone: '+1-800-819-5053', category: 'hotels', verified: true, sponsored: true, tagline: 'Global Reservations', website: 'fourseasons.com', hours: '24/7' },
+  // ── AIRLINES ──
   { name: 'American Airlines', phone: '+1-800-433-7300', category: 'airlines', verified: true, tagline: 'Reservations & Flight Info', website: 'aa.com', hours: '24/7' },
   { name: 'United Airlines', phone: '+1-800-864-8331', category: 'airlines', verified: true, tagline: 'Customer Service', website: 'united.com', hours: '24/7' },
   { name: 'Southwest Airlines', phone: '+1-800-435-9792', category: 'airlines', verified: true, tagline: 'Reservations', website: 'southwest.com', hours: '24/7' },
   { name: 'JetBlue Airways', phone: '+1-800-538-2583', category: 'airlines', verified: true, tagline: 'Customer Support', website: 'jetblue.com', hours: '24/7' },
+  { name: 'Emirates', phone: '+1-800-777-3999', category: 'airlines', verified: true, tagline: 'Reservations', website: 'emirates.com', hours: '24/7' },
+  { name: 'British Airways', phone: '+1-800-247-9297', category: 'airlines', verified: true, tagline: 'Reservations', website: 'britishairways.com', hours: '24/7' },
   { name: 'Alaska Airlines', phone: '+1-800-252-7522', category: 'airlines', verified: true, tagline: 'Reservations', website: 'alaskaair.com', hours: '24/7' },
-  { name: 'Chase Bank', phone: '+1-800-935-9935', category: 'banks', verified: true, tagline: 'Personal Banking', website: 'chase.com', hours: '24/7' },
+  // ── BANKS & FINANCE ──
+  { name: 'Chase Private Client', phone: '+1-800-935-9935', category: 'banks', verified: true, tagline: 'Private Banking', website: 'chase.com', hours: '24/7' },
   { name: 'Bank of America', phone: '+1-800-432-1000', category: 'banks', verified: true, tagline: 'Customer Service', website: 'bankofamerica.com', hours: '24/7' },
   { name: 'Wells Fargo', phone: '+1-800-869-3557', category: 'banks', verified: true, tagline: 'General Banking', website: 'wellsfargo.com', hours: '24/7' },
   { name: 'Citibank', phone: '+1-800-374-9700', category: 'banks', verified: true, tagline: 'Customer Service', website: 'citi.com', hours: '24/7' },
-  { name: 'Capital One', phone: '+1-877-383-4802', category: 'banks', verified: true, sponsored: true, tagline: 'Credit Card & Banking', website: 'capitalone.com', hours: '24/7' },
+  { name: 'Charles Schwab', phone: '+1-800-435-4000', category: 'banks', verified: true, tagline: 'Brokerage & Banking', website: 'schwab.com', hours: 'Mon-Fri 24hrs' },
+  { name: 'Fidelity Investments', phone: '+1-800-343-3548', category: 'banks', verified: true, tagline: 'Account Services', website: 'fidelity.com', hours: 'Mon-Fri 8am-10pm ET' },
+  // ── TECH ──
   { name: 'Apple Support', phone: '+1-800-275-2273', category: 'tech', verified: true, tagline: 'Technical Support', website: 'apple.com/support', hours: 'Mon-Sun 5am-8pm PT' },
   { name: 'Amazon Customer Service', phone: '+1-888-280-4331', category: 'tech', verified: true, tagline: 'Orders & Returns', website: 'amazon.com', hours: '24/7' },
   { name: 'Google Support', phone: '+1-650-253-0000', category: 'tech', verified: true, tagline: 'General Inquiries', website: 'google.com', hours: 'Mon-Fri 9am-5pm PT' },
   { name: 'Microsoft Support', phone: '+1-800-642-7676', category: 'tech', verified: true, tagline: 'Technical Support', website: 'microsoft.com', hours: '24/7' },
-  { name: 'Samsung Support', phone: '+1-800-726-7864', category: 'tech', verified: true, tagline: 'Product Support', website: 'samsung.com', hours: '24/7' },
-  { name: 'Marriott Hotels', phone: '+1-888-236-2427', category: 'hotels', verified: true, sponsored: true, tagline: 'Reservations', website: 'marriott.com', hours: '24/7' },
+  { name: 'Tesla Support', phone: '+1-877-798-3752', category: 'tech', verified: true, tagline: 'Vehicle & Energy Support', website: 'tesla.com', hours: '24/7' },
+  // ── HOTELS ──
+  { name: 'Marriott Bonvoy', phone: '+1-888-236-2427', category: 'hotels', verified: true, tagline: 'Reservations', website: 'marriott.com', hours: '24/7' },
   { name: 'Hilton Hotels', phone: '+1-800-445-8667', category: 'hotels', verified: true, tagline: 'Guest Reservations', website: 'hilton.com', hours: '24/7' },
-  { name: 'Hyatt Hotels', phone: '+1-800-323-7249', category: 'hotels', verified: true, tagline: 'Reservations', website: 'hyatt.com', hours: '24/7' },
-  { name: 'IHG (Holiday Inn)', phone: '+1-800-465-4329', category: 'hotels', verified: true, tagline: 'Reservations', website: 'ihg.com', hours: '24/7' },
+  { name: 'Park Hyatt', phone: '+1-800-323-7249', category: 'hotels', verified: true, tagline: 'Luxury Reservations', website: 'hyatt.com', hours: '24/7' },
+  { name: 'Rosewood Hotels', phone: '+1-888-767-3966', category: 'hotels', verified: true, tagline: 'Reservations', website: 'rosewoodhotels.com', hours: '24/7' },
+  { name: 'Aman Resorts', phone: '+1-754-216-7830', category: 'hotels', verified: true, tagline: 'Global Reservations', website: 'aman.com', hours: 'Mon-Fri 9am-6pm ET' },
+  // ── HEALTH ──
   { name: 'Poison Control', phone: '+1-800-222-1222', category: 'hospitals', verified: true, tagline: 'Emergency Poison Help', hours: '24/7' },
   { name: 'Medicare', phone: '+1-800-633-4227', category: 'hospitals', verified: true, tagline: 'Coverage & Enrollment', website: 'medicare.gov', hours: 'Mon-Fri 8am-8pm ET' },
   { name: 'CVS Pharmacy', phone: '+1-800-746-7287', category: 'hospitals', verified: true, tagline: 'Pharmacy Help', website: 'cvs.com', hours: 'Mon-Sun 8am-10pm ET' },
-  { name: 'Walgreens Pharmacy', phone: '+1-800-925-4733', category: 'hospitals', verified: true, tagline: 'Pharmacy Help', website: 'walgreens.com', hours: 'Mon-Sun 8am-10pm ET' },
+  { name: 'One Medical', phone: '+1-888-663-6331', category: 'hospitals', verified: true, tagline: 'Primary Care', website: 'onemedical.com', hours: 'Mon-Fri 8am-6pm' },
+  // ── GOVERNMENT ──
   { name: 'IRS', phone: '+1-800-829-1040', category: 'government', verified: true, tagline: 'Tax Help & Info', website: 'irs.gov', hours: 'Mon-Fri 7am-7pm' },
   { name: 'Social Security', phone: '+1-800-772-1213', category: 'government', verified: true, tagline: 'Benefits & Claims', website: 'ssa.gov', hours: 'Mon-Fri 8am-7pm' },
   { name: 'US Postal Service', phone: '+1-800-275-8777', category: 'government', verified: true, tagline: 'Mail & Package Info', website: 'usps.com', hours: 'Mon-Sun 8am-8:30pm ET' },
   { name: 'DMV (National)', phone: '+1-800-777-0133', category: 'government', verified: true, tagline: 'Licensing & Registration', website: 'dmv.org', hours: 'Varies by state' },
+  // ── UTILITIES ──
   { name: 'Comcast / Xfinity', phone: '+1-800-934-6489', category: 'utilities', verified: true, tagline: 'Internet & Cable', website: 'xfinity.com', hours: '24/7' },
   { name: 'AT&T', phone: '+1-800-288-2020', category: 'utilities', verified: true, tagline: 'Phone & Internet', website: 'att.com', hours: 'Mon-Sun 8am-10pm CT' },
   { name: 'Verizon', phone: '+1-800-922-0204', category: 'utilities', verified: true, tagline: 'Wireless & Home', website: 'verizon.com', hours: 'Mon-Sun 8am-9pm ET' },
   { name: 'T-Mobile', phone: '+1-800-937-8997', category: 'utilities', verified: true, tagline: 'Wireless Service', website: 't-mobile.com', hours: '24/7' },
-  { name: "McDonald's", phone: '+1-800-244-6227', category: 'restaurants', verified: true, tagline: 'Customer Service', website: 'mcdonalds.com', hours: 'Mon-Fri 9am-7pm CT' },
-  { name: "Domino's Pizza", phone: '+1-734-930-3030', category: 'restaurants', verified: true, tagline: 'Corporate / Orders', website: 'dominos.com', hours: 'Varies' },
+  // ── FOOD & DELIVERY ──
   { name: 'Starbucks', phone: '+1-800-782-7282', category: 'restaurants', verified: true, tagline: 'Customer Service', website: 'starbucks.com', hours: 'Mon-Sun 5am-8pm PT' },
+  { name: "Domino's Pizza", phone: '+1-734-930-3030', category: 'restaurants', verified: true, tagline: 'Corporate / Orders', website: 'dominos.com', hours: 'Varies' },
   { name: 'Chick-fil-A', phone: '+1-866-232-2040', category: 'restaurants', verified: true, tagline: 'Customer Service', website: 'chick-fil-a.com', hours: 'Mon-Sat 9am-10pm ET' },
   { name: 'Chipotle', phone: '+1-833-860-0467', category: 'restaurants', verified: true, tagline: 'Customer Support', website: 'chipotle.com', hours: 'Mon-Sun 8am-11pm ET' },
-  { name: 'DoorDash', phone: '+1-855-973-1040', category: 'restaurants', verified: true, sponsored: true, tagline: 'Delivery Support', website: 'doordash.com', hours: '24/7' },
+  { name: 'DoorDash', phone: '+1-855-973-1040', category: 'restaurants', verified: true, tagline: 'Delivery Support', website: 'doordash.com', hours: '24/7' },
   { name: 'Uber Eats', phone: '+1-800-253-6882', category: 'restaurants', verified: true, tagline: 'Delivery Support', website: 'ubereats.com', hours: '24/7' },
 ];
 
@@ -343,28 +357,16 @@ function LoadingSkeleton() {
 
 // ─── AVATAR ────────────────────────────────────────────────────────────
 function Avatar({ name, size = 44, sponsored = false }) {
-  const bg = getAvatarColor(name);
+  const bg = sponsored ? '#1c1c1e' : getAvatarColor(name);
   return (
     <div style={{
       width: size, height: size, borderRadius: size/2,
-      background: sponsored ? `linear-gradient(135deg, ${bg}, #ff9500)` : bg,
+      background: bg,
       display:'flex', alignItems:'center', justifyContent:'center',
       color:'white', fontWeight:600, fontSize: size * 0.36,
-      letterSpacing: 0.5, flexShrink: 0, position: 'relative',
-      boxShadow: sponsored ? '0 2px 8px rgba(255,149,0,0.3)' : 'none',
+      letterSpacing: 0.5, flexShrink: 0,
     }}>
       {getInitials(name)}
-      {sponsored && (
-        <div style={{
-          position:'absolute', bottom:-2, right:-2,
-          background:'#ff9500', borderRadius:8,
-          width:16, height:16, display:'flex',
-          alignItems:'center', justifyContent:'center',
-          border: '2px solid white',
-        }}>
-          <Icons.Sparkle size={8} color="white" />
-        </div>
-      )}
     </div>
   );
 }
@@ -456,9 +458,9 @@ function ContactRow({ item, onSelect, onCall }) {
       display:'flex', alignItems:'center', padding:'10px 16px',
       cursor:'pointer', transition:'background 0.15s',
       background: hover
-        ? (item.sponsored ? 'rgba(255,249,225,0.8)' : 'rgba(0,0,0,0.03)')
-        : (item.sponsored ? 'linear-gradient(135deg, rgba(255,249,225,0.5), rgba(255,244,200,0.3))' : 'transparent'),
-      borderLeft: item.sponsored ? '3px solid #ffcc02' : '3px solid transparent',
+        ? (item.sponsored ? 'rgba(0,122,255,0.06)' : 'rgba(0,0,0,0.03)')
+        : (item.sponsored ? 'rgba(0,122,255,0.03)' : 'transparent'),
+      borderLeft: item.sponsored ? '2.5px solid rgba(0,122,255,0.35)' : '2.5px solid transparent',
     }}
     onClick={() => onSelect(item)}
     onMouseEnter={() => setHover(true)}
@@ -480,8 +482,8 @@ function ContactRow({ item, onSelect, onCall }) {
           )}
           {item.sponsored && (
             <span style={{
-              fontSize:9, fontWeight:700, color:'#b8860b',
-              background:'rgba(255,204,2,0.25)', padding:'1px 5px',
+              fontSize:9, fontWeight:700, color:'#636366',
+              background:'rgba(0,0,0,0.06)', padding:'1px 5px',
               borderRadius:4, letterSpacing:0.5,
             }}>AD</span>
           )}
@@ -616,7 +618,7 @@ function ContactDetail({ item, onClose, onToggleFavorite, isFavorite, onCall }) 
           <Icons.Verified size={20} />
           <div>
             <div style={{ fontSize:14, fontWeight:500, color:'#007aff' }}>Verified Number</div>
-            <div style={{ fontSize:12, color:'#8e8e93', marginTop:2 }}>This phone number has been verified by PhoneTag</div>
+            <div style={{ fontSize:12, color:'#8e8e93', marginTop:2 }}>This phone number has been verified by SpeedDial</div>
           </div>
         </div>
       )}
@@ -629,7 +631,7 @@ function ContactDetail({ item, onClose, onToggleFavorite, isFavorite, onCall }) 
           <span style={{ fontSize:20 }}>📍</span>
           <div>
             <div style={{ fontSize:14, fontWeight:500, color:'#8e8e93' }}>Google Places Result</div>
-            <div style={{ fontSize:12, color:'#aeaeb2', marginTop:2 }}>Phone number sourced from Google. Not yet verified by PhoneTag.</div>
+            <div style={{ fontSize:12, color:'#aeaeb2', marginTop:2 }}>Phone number sourced from Google. Not yet verified by SpeedDial.</div>
           </div>
         </div>
       )}
@@ -680,10 +682,10 @@ function App() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [activeTab, setActiveTab] = useState('contacts');
   const [favorites, setFavorites] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('phonetag_favs') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('speeddial_favs') || '[]'); } catch { return []; }
   });
   const [recents, setRecents] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('phonetag_recents') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('speeddial_recents') || '[]'); } catch { return []; }
   });
   const [loading, setLoading] = useState(false);
   const [apiResults, setApiResults] = useState([]);
@@ -691,10 +693,10 @@ function App() {
   const searchTimeoutRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem('phonetag_favs', JSON.stringify(favorites));
+    localStorage.setItem('speeddial_favs', JSON.stringify(favorites));
   }, [favorites]);
   useEffect(() => {
-    localStorage.setItem('phonetag_recents', JSON.stringify(recents));
+    localStorage.setItem('speeddial_recents', JSON.stringify(recents));
   }, [recents]);
 
   // Debounced Google Places search via JS SDK
@@ -889,7 +891,7 @@ function App() {
             color:'#8e8e93', background:'#f2f2f7',
             position:'sticky', top:0, zIndex:5,
           }}>
-            {letter === '★' ? '★ Featured' : letter}
+            {letter === '★' ? 'Featured' : letter}
           </div>
           {groupedResults[letter].map((item, i) => (
             <div key={i} style={{
@@ -910,31 +912,22 @@ function App() {
     <div style={{ height:'100%', display:'flex', flexDirection:'column', position:'relative' }}>
       <div style={{ height: 8, background:'#f2f2f7' }} />
 
-      <div style={{ padding:'10px 16px 4px' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{
-              width:32, height:32, borderRadius:8,
-              background:'#000000',
-              display:'flex', alignItems:'center', justifyContent:'center',
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-              </svg>
-            </div>
-            <h1 style={{
-              fontSize:34, fontWeight:700, letterSpacing:-1.2,
-              color:'#000000',
-            }}>PhoneTag</h1>
-          </div>
+      <div style={{ padding:'14px 16px 10px' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
           <div style={{
-            fontSize:10, fontWeight:500,
-            color: apiReady ? '#34c759' : '#8e8e93',
-            padding:'3px 8px', borderRadius:6,
-            background: apiReady ? 'rgba(52,199,89,0.08)' : 'rgba(142,142,147,0.08)',
+            width:34, height:34, borderRadius:9,
+            background:'#000',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            flexShrink:0,
           }}>
-            {apiReady ? 'Live' : 'Directory'}
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="white">
+              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+            </svg>
           </div>
+          <h1 style={{
+            fontSize:34, fontWeight:700, letterSpacing:-1,
+            color:'#000000',
+          }}>SpeedDial</h1>
         </div>
       </div>
 
