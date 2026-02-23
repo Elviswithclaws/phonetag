@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>PhoneTag</title>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<!-- Google Maps JS SDK with Places library -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAUS7kayJ3f7s_ryhe_Fmj38L8Rke9tVxs&libraries=places"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f2f2f7;
+    --card-bg: #ffffff;
+    --text-primary: #000000;
+    --text-secondary: #8e8e93;
+    --text-tertiary: #aeaeb2;
+    --blue: #007aff;
+    --green: #34c759;
+    --red: #ff3b30;
+    --orange: #ff9500;
+    --separator: #c6c6c8;
+    --search-bg: #e5e5ea;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    height: 100dvh;
+    width: 100vw;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #root {
+    height: 100%;
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 0 40px rgba(0,0,0,0.08);
+  }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<!-- Map div required by Google Places Service — must be rendered but can be offscreen -->
+<div id="gmap" style="width:1px;height:1px;position:absolute;left:-9999px"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ─── GOOGLE PLACES SERVICE (client-side JS SDK) ────────────────────────
+let placesService = null;
+let placesReady = false;
+
+function initPlaces() {
+  try {
+    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+      console.warn('Google Maps JS SDK not available');
+      return;
+    }
+    // PlacesService can use a plain div (doesn't need a full map)
+    const div = document.getElementById('gmap');
+    placesService = new google.maps.places.PlacesService(div);
+    placesReady = true;
+    console.log('Google Places service ready');
+  } catch(e) {
+    console.warn('Google Places SDK init failed:', e);
+  }
+}
+initPlaces();
+
+function searchPlaces(query) {
+  return new Promise((resolve) => {
+    if (!placesService) {
+      // Retry init in case SDK loaded late
+      initPlaces();
+      if (!placesService) { resolve([]); return; }
+    }
+
+    const request = { query: query };
+
+    placesService.textSearch(request, (results, status) => {
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !results) {
+        console.warn('textSearch status:', status);
+        resolve([]);
+        return;
+      }
+
+      // Get details (including phone) for top results
+      let completed = 0;
+      const output = [];
+      const toFetch = results.slice(0, 8);
+
+      if (toFetch.length === 0) { resolve([]); return; }
+
+      toFetch.forEach((place) => {
+        placesService.getDetails(
+          {
+            placeId: place.place_id,
+            fields: ['name', 'formatted_phone_number', 'international_phone_number', 'website', 'opening_hours', 'formatted_address', 'types', 'rating']
+          },
+          (detail, detailStatus) => {
+            completed++;
+            if (detailStatus === google.maps.places.PlacesServiceStatus.OK && detail && detail.formatted_phone_number) {
+              output.push({
+                name: detail.name,
+                phone: detail.international_phone_number || detail.formatted_phone_number,
+                tagline: (place.formatted_address || '').split(',').slice(0, 2).join(',').trim(),
+                category: guessCategory(detail.types || []),
+                verified: false,
+                website: detail.website ? detail.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : null,
+                hours: detail.opening_hours && detail.opening_hours.weekday_text
+                  ? detail.opening_hours.weekday_text[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]
+                  : null,
+                rating: detail.rating,
+                fromApi: true,
+              });
+            }
+            if (completed === toFetch.length) {
+              resolve(output);
+            }
+          }
+        );
+      });
+    });
+  });
+}
+
+function guessCategory(types) {
+  if (types.some(t => t.includes('airline') || t.includes('airport'))) return 'airlines';
+  if (types.some(t => t.includes('restaurant') || t.includes('food') || t.includes('cafe') || t.includes('bakery') || t.includes('meal'))) return 'restaurants';
+  if (types.some(t => t.includes('hotel') || t.includes('lodging'))) return 'hotels';
+  if (types.some(t => t.includes('bank') || t.includes('finance') || t.includes('atm'))) return 'banks';
+  if (types.some(t => t.includes('hospital') || t.includes('health') || t.includes('doctor') || t.includes('pharmacy'))) return 'hospitals';
+  if (types.some(t => t.includes('government') || t.includes('post_office') || t.includes('courthouse'))) return 'government';
+  return 'restaurants';
+}
+
+// ─── ICONS ─────────────────────────────────────────────────────────────
+const Icons = {
+  Search: ({ size = 20, color = '#8e8e93' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+    </svg>
+  ),
+  Phone: ({ size = 20, color = '#34c759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+    </svg>
+  ),
+  PhoneOutline: ({ size = 20, color = '#8e8e93' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+  ),
+  Star: ({ size = 20, color = '#ffcc00', filled = true }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  ),
+  Clock: ({ size = 20, color = '#8e8e93' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  ),
+  X: ({ size = 20, color = '#8e8e93' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+    </svg>
+  ),
+  ChevronRight: ({ size = 16, color = '#c7c7cc' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m9 18 6-6-6-6"/>
+    </svg>
+  ),
+  Verified: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#007aff">
+      <path d="M12 1l3.09 4.26L20 6.27l-2.18 4.39L18.18 16 12 14.46 5.82 16 6.18 10.66 4 6.27l4.91-1.01L12 1z"/>
+      <path d="M10 14.2l-3-3 1.4-1.4 1.6 1.6 4.6-4.6 1.4 1.4-6 6z" fill="white"/>
+    </svg>
+  ),
+  Back: ({ size = 24, color = '#007aff' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m15 18-6-6 6-6"/>
+    </svg>
+  ),
+  Message: ({ size = 20, color = '#34c759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+    </svg>
+  ),
+  Copy: ({ size = 18, color = '#007aff' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+    </svg>
+  ),
+  Sparkle: ({ size = 14, color = '#ff9500' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"/>
+    </svg>
+  ),
+};
+
+// ─── CATEGORIES ────────────────────────────────────────────────────────
+const CATEGORIES = [
+  { id: 'all', label: 'All', emoji: '🔍' },
+  { id: 'airlines', label: 'Airlines', emoji: '✈️' },
+  { id: 'restaurants', label: 'Food', emoji: '🍽️' },
+  { id: 'hotels', label: 'Hotels', emoji: '🏨' },
+  { id: 'banks', label: 'Banks', emoji: '🏦' },
+  { id: 'hospitals', label: 'Health', emoji: '🏥' },
+  { id: 'government', label: 'Gov', emoji: '🏛️' },
+  { id: 'utilities', label: 'Utilities', emoji: '⚡' },
+  { id: 'tech', label: 'Tech', emoji: '💻' },
+];
+
+// ─── CURATED DIRECTORY ─────────────────────────────────────────────────
+const CURATED_DIRECTORY = [
+  { name: 'Delta Air Lines', phone: '+1-800-221-1212', category: 'airlines', verified: true, sponsored: true, tagline: 'Customer Service & Reservations', website: 'delta.com', hours: '24/7' },
+  { name: 'American Airlines', phone: '+1-800-433-7300', category: 'airlines', verified: true, tagline: 'Reservations & Flight Info', website: 'aa.com', hours: '24/7' },
+  { name: 'United Airlines', phone: '+1-800-864-8331', category: 'airlines', verified: true, tagline: 'Customer Service', website: 'united.com', hours: '24/7' },
+  { name: 'Southwest Airlines', phone: '+1-800-435-9792', category: 'airlines', verified: true, tagline: 'Reservations', website: 'southwest.com', hours: '24/7' },
+  { name: 'JetBlue Airways', phone: '+1-800-538-2583', category: 'airlines', verified: true, tagline: 'Customer Support', website: 'jetblue.com', hours: '24/7' },
+  { name: 'Alaska Airlines', phone: '+1-800-252-7522', category: 'airlines', verified: true, tagline: 'Reservations', website: 'alaskaair.com', hours: '24/7' },
+  { name: 'Chase Bank', phone: '+1-800-935-9935', category: 'banks', verified: true, tagline: 'Personal Banking', website: 'chase.com', hours: '24/7' },
+  { name: 'Bank of America', phone: '+1-800-432-1000', category: 'banks', verified: true, tagline: 'Customer Service', website: 'bankofamerica.com', hours: '24/7' },
+  { name: 'Wells Fargo', phone: '+1-800-869-3557', category: 'banks', verified: true, tagline: 'General Banking', website: 'wellsfargo.com', hours: '24/7' },
+  { name: 'Citibank', phone: '+1-800-374-9700', category: 'banks', verified: true, tagline: 'Customer Service', website: 'citi.com', hours: '24/7' },
+  { name: 'Capital One', phone: '+1-877-383-4802', category: 'banks', verified: true, sponsored: true, tagline: 'Credit Card & Banking', website: 'capitalone.com', hours: '24/7' },
+  { name: 'Apple Support', phone: '+1-800-275-2273', category: 'tech', verified: true, tagline: 'Technical Support', website: 'apple.com/support', hours: 'Mon-Sun 5am-8pm PT' },
+  { name: 'Amazon Customer Service', phone: '+1-888-280-4331', category: 'tech', verified: true, tagline: 'Orders & Returns', website: 'amazon.com', hours: '24/7' },
+  { name: 'Google Support', phone: '+1-650-253-0000', category: 'tech', verified: true, tagline: 'General Inquiries', website: 'google.com', hours: 'Mon-Fri 9am-5pm PT' },
+  { name: 'Microsoft Support', phone: '+1-800-642-7676', category: 'tech', verified: true, tagline: 'Technical Support', website: 'microsoft.com', hours: '24/7' },
+  { name: 'Samsung Support', phone: '+1-800-726-7864', category: 'tech', verified: true, tagline: 'Product Support', website: 'samsung.com', hours: '24/7' },
+  { name: 'Marriott Hotels', phone: '+1-888-236-2427', category: 'hotels', verified: true, sponsored: true, tagline: 'Reservations', website: 'marriott.com', hours: '24/7' },
+  { name: 'Hilton Hotels', phone: '+1-800-445-8667', category: 'hotels', verified: true, tagline: 'Guest Reservations', website: 'hilton.com', hours: '24/7' },
+  { name: 'Hyatt Hotels', phone: '+1-800-323-7249', category: 'hotels', verified: true, tagline: 'Reservations', website: 'hyatt.com', hours: '24/7' },
+  { name: 'IHG (Holiday Inn)', phone: '+1-800-465-4329', category: 'hotels', verified: true, tagline: 'Reservations', website: 'ihg.com', hours: '24/7' },
+  { name: 'Poison Control', phone: '+1-800-222-1222', category: 'hospitals', verified: true, tagline: 'Emergency Poison Help', hours: '24/7' },
+  { name: 'Medicare', phone: '+1-800-633-4227', category: 'hospitals', verified: true, tagline: 'Coverage & Enrollment', website: 'medicare.gov', hours: 'Mon-Fri 8am-8pm ET' },
+  { name: 'CVS Pharmacy', phone: '+1-800-746-7287', category: 'hospitals', verified: true, tagline: 'Pharmacy Help', website: 'cvs.com', hours: 'Mon-Sun 8am-10pm ET' },
+  { name: 'Walgreens Pharmacy', phone: '+1-800-925-4733', category: 'hospitals', verified: true, tagline: 'Pharmacy Help', website: 'walgreens.com', hours: 'Mon-Sun 8am-10pm ET' },
+  { name: 'IRS', phone: '+1-800-829-1040', category: 'government', verified: true, tagline: 'Tax Help & Info', website: 'irs.gov', hours: 'Mon-Fri 7am-7pm' },
+  { name: 'Social Security', phone: '+1-800-772-1213', category: 'government', verified: true, tagline: 'Benefits & Claims', website: 'ssa.gov', hours: 'Mon-Fri 8am-7pm' },
+  { name: 'US Postal Service', phone: '+1-800-275-8777', category: 'government', verified: true, tagline: 'Mail & Package Info', website: 'usps.com', hours: 'Mon-Sun 8am-8:30pm ET' },
+  { name: 'DMV (National)', phone: '+1-800-777-0133', category: 'government', verified: true, tagline: 'Licensing & Registration', website: 'dmv.org', hours: 'Varies by state' },
+  { name: 'Comcast / Xfinity', phone: '+1-800-934-6489', category: 'utilities', verified: true, tagline: 'Internet & Cable', website: 'xfinity.com', hours: '24/7' },
+  { name: 'AT&T', phone: '+1-800-288-2020', category: 'utilities', verified: true, tagline: 'Phone & Internet', website: 'att.com', hours: 'Mon-Sun 8am-10pm CT' },
+  { name: 'Verizon', phone: '+1-800-922-0204', category: 'utilities', verified: true, tagline: 'Wireless & Home', website: 'verizon.com', hours: 'Mon-Sun 8am-9pm ET' },
+  { name: 'T-Mobile', phone: '+1-800-937-8997', category: 'utilities', verified: true, tagline: 'Wireless Service', website: 't-mobile.com', hours: '24/7' },
+  { name: "McDonald's", phone: '+1-800-244-6227', category: 'restaurants', verified: true, tagline: 'Customer Service', website: 'mcdonalds.com', hours: 'Mon-Fri 9am-7pm CT' },
+  { name: "Domino's Pizza", phone: '+1-734-930-3030', category: 'restaurants', verified: true, tagline: 'Corporate / Orders', website: 'dominos.com', hours: 'Varies' },
+  { name: 'Starbucks', phone: '+1-800-782-7282', category: 'restaurants', verified: true, tagline: 'Customer Service', website: 'starbucks.com', hours: 'Mon-Sun 5am-8pm PT' },
+  { name: 'Chick-fil-A', phone: '+1-866-232-2040', category: 'restaurants', verified: true, tagline: 'Customer Service', website: 'chick-fil-a.com', hours: 'Mon-Sat 9am-10pm ET' },
+  { name: 'Chipotle', phone: '+1-833-860-0467', category: 'restaurants', verified: true, tagline: 'Customer Support', website: 'chipotle.com', hours: 'Mon-Sun 8am-11pm ET' },
+  { name: 'DoorDash', phone: '+1-855-973-1040', category: 'restaurants', verified: true, sponsored: true, tagline: 'Delivery Support', website: 'doordash.com', hours: '24/7' },
+  { name: 'Uber Eats', phone: '+1-800-253-6882', category: 'restaurants', verified: true, tagline: 'Delivery Support', website: 'ubereats.com', hours: '24/7' },
+];
+
+// ─── HELPERS ───────────────────────────────────────────────────────────
+function formatPhone(phone) {
+  const cleaned = phone.replace(/[^\d]/g, '');
+  if (cleaned.length === 11 && cleaned[0] === '1') {
+    return `(${cleaned.slice(1,4)}) ${cleaned.slice(4,7)}-${cleaned.slice(7)}`;
+  }
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+  }
+  return phone;
+}
+
+function getInitials(name) {
+  return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+}
+
+function getAvatarColor(name) {
+  const colors = ['#007aff','#34c759','#ff9500','#ff3b30','#af52de','#5856d6','#ff2d55','#00c7be','#ff6482','#30b0c7'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// ─── LOADING SKELETON ──────────────────────────────────────────────────
+function LoadingSkeleton() {
+  return (
+    <div style={{ padding: '0 16px' }}>
+      {[1,2,3,4,5].map(i => (
+        <div key={i} style={{ display:'flex', alignItems:'center', padding:'12px 0', gap: 12 }}>
+          <div style={{
+            width:44, height:44, borderRadius:22,
+            background: 'linear-gradient(90deg, #e5e5ea 25%, #f0f0f5 50%, #e5e5ea 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite',
+          }}/>
+          <div style={{ flex:1 }}>
+            <div style={{
+              width:'60%', height:14, borderRadius:4, marginBottom:6,
+              background: 'linear-gradient(90deg, #e5e5ea 25%, #f0f0f5 50%, #e5e5ea 75%)',
+              backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite',
+            }}/>
+            <div style={{
+              width:'40%', height:10, borderRadius:4,
+              background: 'linear-gradient(90deg, #e5e5ea 25%, #f0f0f5 50%, #e5e5ea 75%)',
+              backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite',
+            }}/>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── AVATAR ────────────────────────────────────────────────────────────
+function Avatar({ name, size = 44, sponsored = false }) {
+  const bg = getAvatarColor(name);
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: size/2,
+      background: sponsored ? `linear-gradient(135deg, ${bg}, #ff9500)` : bg,
+      display:'flex', alignItems:'center', justifyContent:'center',
+      color:'white', fontWeight:600, fontSize: size * 0.36,
+      letterSpacing: 0.5, flexShrink: 0, position: 'relative',
+      boxShadow: sponsored ? '0 2px 8px rgba(255,149,0,0.3)' : 'none',
+    }}>
+      {getInitials(name)}
+      {sponsored && (
+        <div style={{
+          position:'absolute', bottom:-2, right:-2,
+          background:'#ff9500', borderRadius:8,
+          width:16, height:16, display:'flex',
+          alignItems:'center', justifyContent:'center',
+          border: '2px solid white',
+        }}>
+          <Icons.Sparkle size={8} color="white" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── SEARCH BAR ────────────────────────────────────────────────────────
+function SearchBar({ value, onChange, onFocus, onBlur, focused, onCancel }) {
+  const inputRef = useRef(null);
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap: 8, padding: '0 16px 10px' }}>
+      <div style={{
+        flex: 1, display:'flex', alignItems:'center',
+        background: '#e5e5ea',
+        borderRadius: 10, padding: '8px 10px',
+        transition: 'all 0.3s ease',
+        border: focused ? '1.5px solid #007aff' : '1.5px solid transparent',
+      }}>
+        <Icons.Search size={16} color={focused ? '#007aff' : '#8e8e93'} />
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search businesses, airlines, banks..."
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          style={{
+            flex: 1, border:'none', outline:'none',
+            background:'transparent', fontSize:16,
+            color:'#000', marginLeft: 8, fontFamily: 'inherit',
+          }}
+        />
+        {value && (
+          <div onClick={() => { onChange(''); inputRef.current?.focus(); }}
+            style={{ cursor:'pointer', padding: 2, display:'flex' }}>
+            <div style={{
+              width:18, height:18, borderRadius:9,
+              background:'#8e8e93', display:'flex',
+              alignItems:'center', justifyContent:'center',
+            }}>
+              <Icons.X size={10} color="white" />
+            </div>
+          </div>
+        )}
+      </div>
+      {focused && (
+        <div onClick={onCancel}
+          style={{ color:'#007aff', fontSize:16, cursor:'pointer', fontWeight:400, whiteSpace:'nowrap' }}>
+          Cancel
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CATEGORY PILLS ────────────────────────────────────────────────────
+function CategoryFilter({ selected, onSelect }) {
+  return (
+    <div style={{
+      display:'flex', gap:8, padding:'0 16px 12px',
+      overflowX:'auto', scrollbarWidth:'none',
+    }}>
+      {CATEGORIES.map(cat => {
+        const active = selected === cat.id;
+        return (
+          <div key={cat.id} onClick={() => onSelect(cat.id)}
+            style={{
+              padding: '6px 14px', borderRadius: 18,
+              background: active ? '#007aff' : '#ffffff',
+              color: active ? 'white' : '#000',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              whiteSpace: 'nowrap', transition: 'all 0.2s',
+              boxShadow: active ? '0 2px 8px rgba(0,122,255,0.3)' : '0 1px 3px rgba(0,0,0,0.06)',
+              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+            }}>
+            <span style={{ fontSize: 14 }}>{cat.emoji}</span>
+            {cat.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── CONTACT ROW ───────────────────────────────────────────────────────
+function ContactRow({ item, onSelect, onCall }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div style={{
+      display:'flex', alignItems:'center', padding:'10px 16px',
+      cursor:'pointer', transition:'background 0.15s',
+      background: hover
+        ? (item.sponsored ? 'rgba(255,249,225,0.8)' : 'rgba(0,0,0,0.03)')
+        : (item.sponsored ? 'linear-gradient(135deg, rgba(255,249,225,0.5), rgba(255,244,200,0.3))' : 'transparent'),
+      borderLeft: item.sponsored ? '3px solid #ffcc02' : '3px solid transparent',
+    }}
+    onClick={() => onSelect(item)}
+    onMouseEnter={() => setHover(true)}
+    onMouseLeave={() => setHover(false)}
+    >
+      <Avatar name={item.name} sponsored={item.sponsored} />
+      <div style={{ flex:1, marginLeft:12, minWidth:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          <span style={{ fontSize:16, fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {item.name}
+          </span>
+          {item.verified && <Icons.Verified size={14} />}
+          {item.fromApi && !item.verified && (
+            <span style={{
+              fontSize:9, fontWeight:600, color:'#8e8e93',
+              background:'rgba(142,142,147,0.15)', padding:'1px 5px',
+              borderRadius:4, letterSpacing:0.3,
+            }}>PLACES</span>
+          )}
+          {item.sponsored && (
+            <span style={{
+              fontSize:9, fontWeight:700, color:'#b8860b',
+              background:'rgba(255,204,2,0.25)', padding:'1px 5px',
+              borderRadius:4, letterSpacing:0.5,
+            }}>AD</span>
+          )}
+        </div>
+        <div style={{ fontSize:13, color:'#8e8e93', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          {item.tagline || formatPhone(item.phone)}
+        </div>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <div onClick={e => { e.stopPropagation(); onCall(item); }}
+          style={{
+            width:32, height:32, borderRadius:16,
+            background: hover ? 'rgba(52,199,89,0.25)' : 'rgba(52,199,89,0.12)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            cursor:'pointer', transition:'all 0.2s',
+          }}>
+          <Icons.Phone size={16} color="#34c759" />
+        </div>
+        <Icons.ChevronRight />
+      </div>
+    </div>
+  );
+}
+
+// ─── CONTACT DETAIL ────────────────────────────────────────────────────
+function ContactDetail({ item, onClose, onToggleFavorite, isFavorite, onCall }) {
+  if (!item) return null;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const num = item.phone.replace(/[^\d+]/g, '');
+    navigator.clipboard?.writeText(num);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div style={{
+      position:'absolute', inset:0, zIndex:100,
+      background:'#f2f2f7',
+      animation:'slideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
+      display:'flex', flexDirection:'column', overflow:'auto',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', padding:'14px 16px', justifyContent:'space-between' }}>
+        <div onClick={onClose} style={{ display:'flex', alignItems:'center', gap:4, cursor:'pointer', color:'#007aff', fontSize:16 }}>
+          <Icons.Back /> Contacts
+        </div>
+        <div onClick={() => onToggleFavorite(item)} style={{ cursor:'pointer' }}>
+          <Icons.Star filled={isFavorite} color={isFavorite ? '#ffcc00' : '#c7c7cc'} size={24} />
+        </div>
+      </div>
+
+      <div style={{ textAlign:'center', padding:'10px 20px 24px' }}>
+        <div style={{ display:'flex', justifyContent:'center' }}>
+          <Avatar name={item.name} size={80} sponsored={item.sponsored} />
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:14 }}>
+          <h2 style={{ fontSize:24, fontWeight:600, letterSpacing:-0.5 }}>{item.name}</h2>
+          {item.verified && <Icons.Verified size={18} />}
+        </div>
+        {item.sponsored && (
+          <div style={{
+            display:'inline-flex', alignItems:'center', gap:4,
+            fontSize:11, fontWeight:600, color:'#b8860b',
+            background:'rgba(255,204,2,0.2)', padding:'3px 10px',
+            borderRadius:10, marginTop:6,
+          }}>
+            <Icons.Sparkle size={10} color="#b8860b" /> Sponsored
+          </div>
+        )}
+        {item.rating && (
+          <div style={{ color:'#8e8e93', fontSize:13, marginTop:4 }}>
+            {'★'.repeat(Math.round(item.rating))}{'☆'.repeat(5 - Math.round(item.rating))} {item.rating}
+          </div>
+        )}
+        <p style={{ color:'#8e8e93', fontSize:14, marginTop:6 }}>{item.tagline}</p>
+      </div>
+
+      <div style={{ display:'flex', justifyContent:'center', gap:16, padding:'0 20px 20px' }}>
+        {[
+          { icon: <Icons.Phone size={22} color="#34c759" />, label:'Call', action: () => onCall(item), color:'#34c759' },
+          { icon: <Icons.Message size={22} color="#34c759" />, label:'Message', action: () => window.open(`sms:${item.phone}`), color:'#34c759' },
+          { icon: <Icons.Copy size={20} color="#007aff" />, label: copied ? 'Copied!' : 'Copy', action: handleCopy, color:'#007aff' },
+        ].map((btn, i) => (
+          <div key={i} onClick={btn.action} style={{
+            display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+            cursor:'pointer', minWidth:70,
+          }}>
+            <div style={{
+              width:52, height:52, borderRadius:14,
+              background:'#ffffff',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              boxShadow:'0 1px 4px rgba(0,0,0,0.06)',
+            }}>{btn.icon}</div>
+            <span style={{ fontSize:12, color:btn.color, fontWeight:500 }}>{btn.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ margin:'0 16px', borderRadius:12, background:'#ffffff', overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+        <div style={{ padding:'14px 16px', borderBottom:'0.5px solid #c6c6c8' }} onClick={() => onCall(item)}>
+          <div style={{ fontSize:12, color:'#8e8e93', marginBottom:3, textTransform:'uppercase', letterSpacing:0.5 }}>phone</div>
+          <div style={{ fontSize:16, color:'#007aff', cursor:'pointer' }}>{formatPhone(item.phone)}</div>
+        </div>
+        {item.hours && (
+          <div style={{ padding:'14px 16px', borderBottom:'0.5px solid #c6c6c8' }}>
+            <div style={{ fontSize:12, color:'#8e8e93', marginBottom:3, textTransform:'uppercase', letterSpacing:0.5 }}>hours</div>
+            <div style={{ fontSize:16 }}>{item.hours}</div>
+          </div>
+        )}
+        {item.website && (
+          <div style={{ padding:'14px 16px', borderBottom:'0.5px solid #c6c6c8' }}
+            onClick={() => window.open(`https://${item.website}`, '_blank')}>
+            <div style={{ fontSize:12, color:'#8e8e93', marginBottom:3, textTransform:'uppercase', letterSpacing:0.5 }}>website</div>
+            <div style={{ fontSize:16, color:'#007aff', cursor:'pointer' }}>{item.website}</div>
+          </div>
+        )}
+        <div style={{ padding:'14px 16px' }}>
+          <div style={{ fontSize:12, color:'#8e8e93', marginBottom:3, textTransform:'uppercase', letterSpacing:0.5 }}>category</div>
+          <div style={{ fontSize:16 }}>
+            {CATEGORIES.find(c => c.id === item.category)?.emoji} {CATEGORIES.find(c => c.id === item.category)?.label || 'Business'}
+          </div>
+        </div>
+      </div>
+
+      {item.verified && (
+        <div style={{
+          margin:'16px 16px 0', padding:'12px 16px',
+          borderRadius:12, background:'rgba(0,122,255,0.06)',
+          display:'flex', alignItems:'center', gap:10,
+        }}>
+          <Icons.Verified size={20} />
+          <div>
+            <div style={{ fontSize:14, fontWeight:500, color:'#007aff' }}>Verified Number</div>
+            <div style={{ fontSize:12, color:'#8e8e93', marginTop:2 }}>This phone number has been verified by PhoneTag</div>
+          </div>
+        </div>
+      )}
+      {item.fromApi && !item.verified && (
+        <div style={{
+          margin:'16px 16px 0', padding:'12px 16px',
+          borderRadius:12, background:'rgba(142,142,147,0.06)',
+          display:'flex', alignItems:'center', gap:10,
+        }}>
+          <span style={{ fontSize:20 }}>📍</span>
+          <div>
+            <div style={{ fontSize:14, fontWeight:500, color:'#8e8e93' }}>Google Places Result</div>
+            <div style={{ fontSize:12, color:'#aeaeb2', marginTop:2 }}>Phone number sourced from Google. Not yet verified by PhoneTag.</div>
+          </div>
+        </div>
+      )}
+      <div style={{ height: 40 }} />
+    </div>
+  );
+}
+
+// ─── TAB BAR ───────────────────────────────────────────────────────────
+function TabBar({ activeTab, onTabChange }) {
+  const tabs = [
+    { id: 'favorites', label: 'Favorites', icon: (c) => <Icons.Star size={22} color={c} filled={c !== '#8e8e93'} /> },
+    { id: 'recents', label: 'Recents', icon: (c) => <Icons.Clock size={22} color={c} /> },
+    { id: 'contacts', label: 'Contacts', icon: (c) => <Icons.PhoneOutline size={22} color={c} /> },
+  ];
+  return (
+    <div style={{
+      display:'flex', justifyContent:'space-around',
+      padding:'6px 0 20px',
+      background:'rgba(255,255,255,0.92)',
+      backdropFilter:'blur(20px)',
+      borderTop:'0.5px solid #c6c6c8',
+      position:'absolute', bottom:0, left:0, right:0,
+    }}>
+      {tabs.map(tab => {
+        const active = activeTab === tab.id;
+        const color = active ? '#007aff' : '#8e8e93';
+        return (
+          <div key={tab.id} onClick={() => onTabChange(tab.id)}
+            style={{
+              display:'flex', flexDirection:'column', alignItems:'center',
+              gap:2, cursor:'pointer', padding:'4px 12px',
+            }}>
+            {tab.icon(color)}
+            <span style={{ fontSize:10, fontWeight:500, color }}>{tab.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── MAIN APP ──────────────────────────────────────────────────────────
+function App() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [activeTab, setActiveTab] = useState('contacts');
+  const [favorites, setFavorites] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('phonetag_favs') || '[]'); } catch { return []; }
+  });
+  const [recents, setRecents] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('phonetag_recents') || '[]'); } catch { return []; }
+  });
+  const [loading, setLoading] = useState(false);
+  const [apiResults, setApiResults] = useState([]);
+  const [apiError, setApiError] = useState('');
+  const searchTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('phonetag_favs', JSON.stringify(favorites));
+  }, [favorites]);
+  useEffect(() => {
+    localStorage.setItem('phonetag_recents', JSON.stringify(recents));
+  }, [recents]);
+
+  // Debounced Google Places search via JS SDK
+  const doSearch = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setApiResults([]);
+      return;
+    }
+    if (!placesService) {
+      setApiError('Google Places not loaded');
+      return;
+    }
+    setLoading(true);
+    setApiError('');
+    try {
+      const results = await searchPlaces(query);
+      setApiResults(results);
+      if (results.length === 0) {
+        // No results with phone numbers
+      }
+    } catch (e) {
+      console.error('Search failed:', e);
+      setApiError('Search failed');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (searchQuery.length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => doSearch(searchQuery), 600);
+    } else {
+      setApiResults([]);
+    }
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [searchQuery, doSearch]);
+
+  const filteredResults = useMemo(() => {
+    let results = [...CURATED_DIRECTORY];
+    if (selectedCategory !== 'all') {
+      results = results.filter(r => r.category === selectedCategory);
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      results = results.filter(r =>
+        r.name.toLowerCase().includes(q) ||
+        r.tagline?.toLowerCase().includes(q) ||
+        r.category?.toLowerCase().includes(q)
+      );
+    }
+    results.sort((a, b) => {
+      if (a.sponsored && !b.sponsored) return -1;
+      if (!a.sponsored && b.sponsored) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    if (apiResults.length > 0) {
+      const names = new Set(results.map(r => r.name.toLowerCase()));
+      apiResults.forEach(r => {
+        if (!names.has(r.name.toLowerCase())) results.push(r);
+      });
+    }
+    return results;
+  }, [searchQuery, selectedCategory, apiResults]);
+
+  const groupedResults = useMemo(() => {
+    if (searchQuery) return null;
+    const groups = {};
+    filteredResults.forEach(item => {
+      const letter = item.sponsored ? '★' : item.name[0].toUpperCase();
+      if (!groups[letter]) groups[letter] = [];
+      groups[letter].push(item);
+    });
+    return groups;
+  }, [filteredResults, searchQuery]);
+
+  const handleCall = (item) => {
+    setRecents(prev => {
+      const filtered = prev.filter(r => r.name !== item.name);
+      return [{ ...item, calledAt: new Date().toISOString() }, ...filtered].slice(0, 20);
+    });
+    window.open(`tel:${item.phone}`);
+  };
+
+  const toggleFavorite = (item) => {
+    setFavorites(prev => {
+      const exists = prev.find(f => f.name === item.name);
+      if (exists) return prev.filter(f => f.name !== item.name);
+      return [...prev, item];
+    });
+  };
+
+  const isFavorite = (item) => favorites.some(f => f.name === item.name);
+  const clearRecents = () => setRecents([]);
+
+  const renderContent = () => {
+    if (activeTab === 'favorites') {
+      if (favorites.length === 0) {
+        return (
+          <div style={{ textAlign:'center', padding:'60px 40px', color:'#8e8e93' }}>
+            <Icons.Star size={48} color="#c7c7cc" filled={false} />
+            <p style={{ fontSize:18, fontWeight:500, marginTop:16, color:'#000' }}>No Favorites</p>
+            <p style={{ fontSize:14, marginTop:6 }}>Tap the star on any contact to add them here for quick access.</p>
+          </div>
+        );
+      }
+      return favorites.map((item, i) => (
+        <ContactRow key={i} item={item} onSelect={setSelectedContact} onCall={handleCall} />
+      ));
+    }
+
+    if (activeTab === 'recents') {
+      if (recents.length === 0) {
+        return (
+          <div style={{ textAlign:'center', padding:'60px 40px', color:'#8e8e93' }}>
+            <Icons.Clock size={48} color="#c7c7cc" />
+            <p style={{ fontSize:18, fontWeight:500, marginTop:16, color:'#000' }}>No Recents</p>
+            <p style={{ fontSize:14, marginTop:6 }}>Numbers you call will appear here.</p>
+          </div>
+        );
+      }
+      return (
+        <>
+          <div style={{ display:'flex', justifyContent:'flex-end', padding:'0 16px 8px' }}>
+            <span onClick={clearRecents} style={{ fontSize:14, color:'#ff3b30', cursor:'pointer' }}>Clear All</span>
+          </div>
+          {recents.map((item, i) => (
+            <ContactRow key={i} item={item} onSelect={setSelectedContact} onCall={handleCall} />
+          ))}
+        </>
+      );
+    }
+
+    // Contacts tab
+    if (searchQuery) {
+      const curatedMatches = filteredResults.filter(r => !r.fromApi);
+      const apiMatches = filteredResults.filter(r => r.fromApi);
+
+      return (
+        <>
+          {curatedMatches.length > 0 && (
+            <>
+              <div style={{
+                padding:'6px 16px', fontSize:12, fontWeight:600,
+                color:'#007aff', textTransform:'uppercase', letterSpacing:0.5,
+              }}>
+                Verified Directory
+              </div>
+              {curatedMatches.map((item, i) => (
+                <ContactRow key={'c'+i} item={item} onSelect={setSelectedContact} onCall={handleCall} />
+              ))}
+            </>
+          )}
+          {loading && <LoadingSkeleton />}
+          {!loading && apiMatches.length > 0 && (
+            <>
+              <div style={{
+                padding:'12px 16px 6px', fontSize:12, fontWeight:600,
+                color:'#8e8e93', textTransform:'uppercase', letterSpacing:0.5,
+              }}>
+                Google Places Results
+              </div>
+              {apiMatches.map((item, i) => (
+                <ContactRow key={'a'+i} item={item} onSelect={setSelectedContact} onCall={handleCall} />
+              ))}
+            </>
+          )}
+          {!loading && curatedMatches.length === 0 && apiMatches.length === 0 && (
+            <div style={{ textAlign:'center', padding:'60px 40px', color:'#8e8e93' }}>
+              <Icons.Search size={48} color="#c7c7cc" />
+              <p style={{ fontSize:18, fontWeight:500, marginTop:16, color:'#000' }}>No Results</p>
+              <p style={{ fontSize:14, marginTop:6 }}>Try a different search term.</p>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    // Grouped alphabetical
+    if (groupedResults) {
+      const letters = Object.keys(groupedResults).sort((a, b) => {
+        if (a === '★') return -1;
+        if (b === '★') return 1;
+        return a.localeCompare(b);
+      });
+      return letters.map(letter => (
+        <div key={letter}>
+          <div style={{
+            padding:'4px 16px', fontSize:13, fontWeight:700,
+            color:'#8e8e93', background:'#f2f2f7',
+            position:'sticky', top:0, zIndex:5,
+          }}>
+            {letter === '★' ? '★ Featured' : letter}
+          </div>
+          {groupedResults[letter].map((item, i) => (
+            <div key={i} style={{
+              background:'#ffffff',
+              borderBottom: i < groupedResults[letter].length - 1 ? '0.5px solid #c6c6c8' : 'none',
+            }}>
+              <ContactRow item={item} onSelect={setSelectedContact} onCall={handleCall} />
+            </div>
+          ))}
+        </div>
+      ));
+    }
+  };
+
+  const apiReady = placesReady || !!placesService;
+
+  return (
+    <div style={{ height:'100%', display:'flex', flexDirection:'column', position:'relative' }}>
+      <div style={{ height: 8, background:'#f2f2f7' }} />
+
+      <div style={{ padding:'10px 16px 4px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+          <h1 style={{
+            fontSize:32, fontWeight:700, letterSpacing:-0.8,
+            background: 'linear-gradient(135deg, #007aff, #5856d6)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>PhoneTag</h1>
+          <div style={{
+            fontSize:10, fontWeight:600,
+            color: apiReady ? '#34c759' : '#ff9500',
+            background: apiReady ? 'rgba(52,199,89,0.1)' : 'rgba(255,149,0,0.1)',
+            padding:'3px 8px', borderRadius:6, letterSpacing:0.5,
+          }}>
+            {apiReady ? '🟢 LIVE' : '⚠️ DIRECTORY ONLY'}
+          </div>
+        </div>
+      </div>
+
+      <SearchBar
+        value={searchQuery}
+        onChange={setSearchQuery}
+        focused={searchFocused}
+        onFocus={() => setSearchFocused(true)}
+        onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+        onCancel={() => { setSearchQuery(''); setSearchFocused(false); }}
+      />
+
+      {activeTab === 'contacts' && (
+        <CategoryFilter selected={selectedCategory} onSelect={setSelectedCategory} />
+      )}
+
+      <div style={{
+        flex:1, overflowY:'auto', overflowX:'hidden',
+        paddingBottom: 80, WebkitOverflowScrolling:'touch',
+      }}>
+        {renderContent()}
+      </div>
+
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {selectedContact && (
+        <ContactDetail
+          item={selectedContact}
+          onClose={() => setSelectedContact(null)}
+          onToggleFavorite={toggleFavorite}
+          isFavorite={isFavorite(selectedContact)}
+          onCall={handleCall}
+        />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
