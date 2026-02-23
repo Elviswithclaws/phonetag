@@ -11,8 +11,23 @@
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-<!-- Google Maps JS SDK with Places library -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAUS7kayJ3f7s_ryhe_Fmj38L8Rke9tVxs&libraries=places"></script>
+<!-- Google Maps JS SDK with Places library — callback triggers when ready -->
+<script>
+  window.placesService = null;
+  window.placesReady = false;
+  window.onGoogleMapsReady = function() {
+    try {
+      var div = document.getElementById('gmap');
+      if (!div) { div = document.createElement('div'); div.id = 'gmap'; div.style.cssText = 'width:1px;height:1px;position:absolute;left:-9999px'; document.body.appendChild(div); }
+      window.placesService = new google.maps.places.PlacesService(div);
+      window.placesReady = true;
+      console.log('Google Places service ready (callback)');
+    } catch(e) {
+      console.warn('Google Places init failed:', e);
+    }
+  };
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAUS7kayJ3f7s_ryhe_Fmj38L8Rke9tVxs&libraries=places&callback=onGoogleMapsReady" async defer></script>
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -80,37 +95,49 @@
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 // ─── GOOGLE PLACES SERVICE (client-side JS SDK) ────────────────────────
-let placesService = null;
-let placesReady = false;
-
-function initPlaces() {
+// placesService & placesReady are set on window by the callback in the <head>
+// This function checks/retries in case the async script hasn't fired yet
+function getPlacesService() {
+  if (window.placesService) return window.placesService;
+  // Try manual init if google is available but callback hasn't fired
   try {
-    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-      console.warn('Google Maps JS SDK not available');
-      return;
+    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+      var div = document.getElementById('gmap');
+      if (div) {
+        window.placesService = new google.maps.places.PlacesService(div);
+        window.placesReady = true;
+        console.log('Google Places service ready (manual)');
+        return window.placesService;
+      }
     }
-    // PlacesService can use a plain div (doesn't need a full map)
-    const div = document.getElementById('gmap');
-    placesService = new google.maps.places.PlacesService(div);
-    placesReady = true;
-    console.log('Google Places service ready');
-  } catch(e) {
-    console.warn('Google Places SDK init failed:', e);
-  }
+  } catch(e) { console.warn('Manual Places init failed:', e); }
+  return null;
 }
-initPlaces();
+
+// Wait for Places to be ready (polls every 300ms, up to 15s)
+function waitForPlaces() {
+  return new Promise(function(resolve) {
+    if (window.placesService) { resolve(window.placesService); return; }
+    var svc = getPlacesService();
+    if (svc) { resolve(svc); return; }
+    var attempts = 0;
+    var timer = setInterval(function() {
+      attempts++;
+      var svc = getPlacesService();
+      if (svc) { clearInterval(timer); resolve(svc); return; }
+      if (attempts > 50) { clearInterval(timer); resolve(null); }
+    }, 300);
+  });
+}
 
 function searchPlaces(query) {
   return new Promise((resolve) => {
-    if (!placesService) {
-      // Retry init in case SDK loaded late
-      initPlaces();
-      if (!placesService) { resolve([]); return; }
-    }
+    var svc = getPlacesService();
+    if (!svc) { resolve([]); return; }
 
-    const request = { query: query };
+    var request = { query: query };
 
-    placesService.textSearch(request, (results, status) => {
+    svc.textSearch(request, (results, status) => {
       console.log('textSearch response — status:', status, 'results:', results ? results.length : 0);
       if (status !== google.maps.places.PlacesServiceStatus.OK || !results) {
         console.warn('textSearch failed — status:', status);
@@ -126,7 +153,7 @@ function searchPlaces(query) {
       if (toFetch.length === 0) { resolve([]); return; }
 
       toFetch.forEach((place) => {
-        placesService.getDetails(
+        svc.getDetails(
           {
             placeId: place.place_id,
             fields: ['name', 'formatted_phone_number', 'international_phone_number', 'website', 'opening_hours', 'formatted_address', 'types', 'rating']
@@ -850,17 +877,16 @@ function App() {
       setApiResults([]);
       return;
     }
-    if (!placesService) {
-      // Try re-init one more time
-      initPlaces();
-      if (!placesService) {
-        setApiError('Google Places not loaded — check API key & billing');
-        return;
-      }
-    }
     setLoading(true);
     setApiError('');
     try {
+      // Wait for Google Places to be available (up to 15s)
+      var svc = await waitForPlaces();
+      if (!svc) {
+        setApiError('Google Places not loaded — check API key & billing');
+        setLoading(false);
+        return;
+      }
       var results = await searchPlaces(query);
       setApiResults(results);
     } catch (e) {
@@ -1064,7 +1090,7 @@ function App() {
               {apiError && (
                 <p style={{ fontSize:12, marginTop:12, color:'#ff3b30', background:'rgba(255,59,48,0.08)', padding:'8px 12px', borderRadius:8, display:'inline-block' }}>{apiError}</p>
               )}
-              {!placesReady && (
+              {!window.placesReady && (
                 <p style={{ fontSize:12, marginTop:8, color:'#ff9500' }}>Google Places API not connected</p>
               )}
             </div>
@@ -1102,7 +1128,7 @@ function App() {
     }
   };
 
-  const apiReady = placesReady || !!placesService;
+  const apiReady = window.placesReady || !!window.placesService;
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column', position:'relative' }}>
